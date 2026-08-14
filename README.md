@@ -1,91 +1,433 @@
-DevOps Practice Project – Dist Directory
+# Brain Tasks App — AWS DevOps Deployment
 
-This repository contains the production-ready build files (dist folder) for DevOps practice and deployment exercises.
+## 1. Project Overview
 
-It is intentionally structured to help learners focus on CI/CD pipelines, hosting, containerization, and infrastructure setup rather than application development.
+This project deploys the Brain Tasks React application to a production-style AWS environment using Docker, Amazon ECR, Amazon EKS, AWS CodeBuild, AWS CodePipeline, Kubernetes, GitHub, and CloudWatch.
 
-📁 What This Repository Contains
+### Application
 
-dist/ – Compiled and production-ready static files
+- Application: Brain Tasks App
+- Application port: `3000`
+- GitHub repository: https://github.com/mngnesh/Guvi-Project-I---Application-Deployment---Brain-Tasks-App
+- AWS Region: `ap-south-1` (Asia Pacific - Mumbai)
 
-HTML
+## 2. Architecture
 
-CSS
+```text
+GitHub
+   |
+   v
+AWS CodePipeline
+   |
+   +---- Source
+   |
+   v
+AWS CodeBuild
+   |
+   +---- Docker build
+   |
+   +---- Push image to Amazon ECR
+   |
+   v
+Amazon ECR
+   |
+   v
+Amazon EKS
+   |
+   +---- Kubernetes Deployment
+   |
+   +---- Kubernetes Service (LoadBalancer)
+   |
+   v
+Brain Tasks React Application
+```
 
-JavaScript
+## 3. AWS Resources
 
-Assets (images, fonts, etc.)
+| Resource | Value |
+|---|---|
+| AWS Region | `ap-south-1` |
+| EKS Cluster | `brain-tasks-cluster` |
+| ECR Repository | `brain-tasks-app` |
+| CodeBuild Project | `brain-tasks-codebuild` |
+| CodePipeline | `brain-tasks-pipeline` |
+| Kubernetes Deployment | `brain-tasks-app` |
+| Kubernetes Service | `brain-tasks-service` |
+| Container Port | `3000` |
 
-These files are ready to deploy to:
+## 4. Live Application
 
-Web servers (Nginx / Apache)
+Application URL:
 
-Cloud platforms (AWS S3, Azure Blob, GCP Storage)
+http://a21be09a0fe1442df9a375faa8d1344f-1465668506.ap-south-1.elb.amazonaws.com:3000
 
-Containerized environments (Docker + Nginx)
+The application is exposed through a Kubernetes `LoadBalancer` Service.
 
-Kubernetes clusters
+### Load Balancer details
 
-CI/CD pipeline demonstrations
+- Load Balancer type: Classic Load Balancer
+- Load Balancer name: `a21be09a0fe1442df9a375faa8d1344f`
+- DNS name: `a21be09a0fe1442df9a375faa8d1344f-1465668506.ap-south-1.elb.amazonaws.com`
+- Port: `3000`
+- ARN: Not applicable because this deployment uses an AWS Classic Load Balancer. Classic Load Balancers do not have the ELBv2 ARN format used by ALB/NLB.
 
-🎯 Purpose of This Repository
+## 5. Repository Structure
 
-This repository is designed for:
+```text
+Brain-Tasks-App/
+|
++-- dist/
++-- k8s/
+|   +-- deployment.yaml
+|   +-- service.yaml
+|
++-- Dockerfile
++-- nginx.conf
++-- buildspec.yml
++-- README.md
+```
 
-DevOps beginners
+## 6. Dockerization
 
-CI/CD practice
+The application is packaged into a Docker image using Nginx to serve the built React application.
 
-Deployment pipeline testing
+### Build the image
 
-Docker & Kubernetes deployment exercises
+```bash
+docker build -t brain-tasks-app:1.0 .
+```
 
-Web server configuration practice
+### Run locally
 
-Reverse proxy and load balancer setup
+```bash
+docker run -d --name brain-tasks-app-container -p 3000:3000 brain-tasks-app:1.0
+```
 
-The goal is to simulate real-world deployment scenarios using already built application files.
+The application can then be tested at:
 
-❓ Why is there NO package.json?
+```text
+http://localhost:3000
+```
 
-You may notice that this repository does not include:
+### Check the container
 
-package.json
+```bash
+docker ps
+```
 
-node_modules
+## 7. Amazon ECR
 
-Source code (src/)
+An Amazon ECR repository named `brain-tasks-app` was created in `ap-south-1`.
 
-Build tools configuration
+Example ECR repository URI:
 
-✅ Reason:
+```text
+391505362986.dkr.ecr.ap-south-1.amazonaws.com/brain-tasks-app
+```
 
-This repository only contains the final production build output (dist), not the development source code.
+Docker images are built by CodeBuild and pushed to this repository.
 
-In a typical project:
+Images are tagged using the Git commit/source version so that each pipeline build can produce a unique image tag.
 
-Developers write source code.
+## 8. Kubernetes / Amazon EKS
 
-The project is built using tools like:
+### EKS Cluster
 
-Node.js
+```text
+brain-tasks-cluster
+```
 
-Webpack
+The EKS cluster is running in:
 
-Vite
+```text
+ap-south-1
+```
 
-React (or other frameworks)
+### Kubernetes Deployment
 
-A dist/ folder is generated.
+The application is deployed using:
 
-Only the production build is deployed to servers.
+```text
+k8s/deployment.yaml
+```
 
-This repository represents step 4 only.
+The deployment uses the dynamically supplied `IMAGE_URI` value from CodeBuild/CodePipeline.
 
-Since this is already the compiled output:
+### Kubernetes Service
 
-No dependencies are required
+The application is exposed using:
 
-No build process is required
+```text
+k8s/service.yaml
+```
 
-No package.json is needed
+The Service type is:
+
+```yaml
+type: LoadBalancer
+```
+
+The application listens on port `3000`.
+
+### Useful commands
+
+Check the cluster:
+
+```bash
+kubectl get nodes
+```
+
+Check pods:
+
+```bash
+kubectl get pods
+```
+
+Check deployment:
+
+```bash
+kubectl get deployments
+```
+
+Check service:
+
+```bash
+kubectl get svc
+```
+
+Check endpoints:
+
+```bash
+kubectl get endpoints
+```
+
+## 9. AWS CodeBuild
+
+CodeBuild project:
+
+```text
+brain-tasks-codebuild
+```
+
+The project uses `buildspec.yml` to automate the Docker build and ECR push.
+
+### Build process
+
+The build performs these operations:
+
+1. Authenticate to Amazon ECR.
+2. Generate an image tag from the source commit.
+3. Build the Docker image.
+4. Push the image to ECR.
+5. Export `IMAGE_URI` and `IMAGE_TAG`.
+6. Provide the Kubernetes manifests as pipeline artifacts.
+
+## 10. buildspec.yml
+
+The buildspec contains the following major stages:
+
+```text
+PRE_BUILD
+    |
+    +-- Login to ECR
+    +-- Generate image tag
+    +-- Generate IMAGE_URI
+
+BUILD
+    |
+    +-- Build Docker image
+
+POST_BUILD
+    |
+    +-- Push Docker image to ECR
+    +-- Export IMAGE_URI
+    +-- Export IMAGE_TAG
+    +-- Upload Kubernetes manifests
+```
+
+## 11. AWS CodePipeline
+
+Pipeline:
+
+```text
+brain-tasks-pipeline
+```
+
+The pipeline contains three stages:
+
+```text
+GitHub Source
+      |
+      v
+AWS CodeBuild
+      |
+      v
+Amazon EKS Deploy
+```
+
+### Source
+
+GitHub is used as the source provider.
+
+The pipeline tracks the `main` branch.
+
+### Build
+
+AWS CodeBuild project:
+
+```text
+brain-tasks-codebuild
+```
+
+The CodeBuild project:
+
+- Builds the Docker image.
+- Pushes the image to ECR.
+- Exports `IMAGE_URI`.
+
+### Deploy
+
+The deployment action uses:
+
+```text
+Amazon EKS
+Kubectl
+```
+
+The following Kubernetes manifests are deployed:
+
+```text
+k8s/deployment.yaml
+k8s/service.yaml
+```
+
+The dynamically generated ECR image URI is passed into the Kubernetes deployment as:
+
+```text
+IMAGE_URI
+```
+
+This allows every pipeline execution to deploy the image produced by the corresponding build.
+
+## 12. CloudWatch Monitoring
+
+CloudWatch Logs are enabled for the CI/CD workflow.
+
+### CodeBuild logs
+
+```text
+/aws/codebuild/brain-tasks-codebuild
+```
+
+These logs provide visibility into:
+
+- Source download
+- ECR authentication
+- Docker image build
+- ECR image push
+- Build phases
+- Build success/failure
+
+### CodePipeline logs
+
+```text
+/aws/codepipeline/brain-tasks-pipeline
+```
+
+These logs provide visibility into pipeline execution.
+
+## 13. Deployment Verification
+
+The deployment was verified using Kubernetes commands.
+
+Example:
+
+```bash
+kubectl get pods
+```
+
+The application pod reached:
+
+```text
+1/1 Running
+```
+
+The Kubernetes Service was verified as:
+
+```text
+LoadBalancer
+```
+
+The Service endpoint was verified as:
+
+```text
+192.168.26.20:3000
+```
+
+The application was also tested from inside the Kubernetes cluster and returned the React application's HTML successfully.
+
+The public LoadBalancer URL was tested successfully:
+
+```text
+http://a21be09a0fe1442df9a375faa8d1344f-1465668506.ap-south-1.elb.amazonaws.com:3000
+```
+
+## 14. CI/CD Verification
+
+The final CodePipeline execution completed successfully:
+
+```text
+Source  - Succeeded
+Build   - Succeeded
+Deploy  - Succeeded
+```
+
+This confirms the complete automated deployment flow:
+
+```text
+GitHub Push
+    |
+    v
+CodePipeline Source
+    |
+    v
+CodeBuild
+    |
+    +--> Docker Build
+    |
+    +--> ECR Push
+    |
+    v
+EKS Deploy
+    |
+    v
+Kubernetes
+    |
+    v
+Live Application
+```
+
+## 15. Screenshots
+
+Project screenshots to a `screenshots/` directory and listed here.
+
+Recommended screenshots:
+
+1. GitHub repository
+2. Docker image/container running locally
+3. Amazon ECR repository and image
+4. EKS cluster showing active/running status
+5. Kubernetes pods showing `Running`
+6. Kubernetes Service showing `LoadBalancer`
+7. Live Brain Tasks application
+8. CodeBuild successful execution
+9. CodePipeline showing Source, Build, and Deploy all successful
+10. CloudWatch CodeBuild logs
+11. CloudWatch CodePipeline logs
+
+
+## 16. Conclusion
+
+The Brain Tasks React application was containerized with Docker, stored in Amazon ECR, deployed to Amazon EKS using Kubernetes manifests, and automated through AWS CodePipeline and CodeBuild.
+
+CloudWatch Logs provide monitoring visibility for the CI/CD workflow, and the application is accessible through the Kubernetes LoadBalancer on port `3000`.
