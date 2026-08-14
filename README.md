@@ -65,11 +65,11 @@ The application is exposed through a Kubernetes `LoadBalancer` Service.
 
 ### Load Balancer details
 
-- Load Balancer type: Classic Load Balancer
-- Load Balancer name: `a21be09a0fe1442df9a375faa8d1344f`
-- DNS name: `a21be09a0fe1442df9a375faa8d1344f-1465668506.ap-south-1.elb.amazonaws.com`
+- Load Balancer type: Network Load Balancer (NLB)
+- Load Balancer ARN: `arn:aws:elasticloadbalancing:ap-south-1:391505362986:loadbalancer/net/a387d9d30d7404230a324ee54239b259/d8f26a5073e9c540`
+- DNS name: `a387d9d30d7404230a324ee54239b259-d8f26a5073e9c540.elb.ap-south-1.amazonaws.com`
+- Scheme: `internet-facing`
 - Port: `3000`
-- ARN: Not applicable because this deployment uses an AWS Classic Load Balancer. Classic Load Balancers do not have the ELBv2 ARN format used by ALB/NLB.
 
 ## 5. Repository Structure
 
