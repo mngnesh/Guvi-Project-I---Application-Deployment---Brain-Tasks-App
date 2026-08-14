@@ -59,7 +59,7 @@ Brain Tasks React Application
 
 Application URL:
 
-http://a21be09a0fe1442df9a375faa8d1344f-1465668506.ap-south-1.elb.amazonaws.com:3000
+**http://a21be09a0fe1442df9a375faa8d1344f-1465668506.ap-south-1.elb.amazonaws.com:3000**
 
 The application is exposed through a Kubernetes `LoadBalancer` Service.
 
